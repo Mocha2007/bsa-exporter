@@ -1,6 +1,9 @@
 ﻿static class Program {
+	static readonly Random random = new Random();
+	const string DEFAULT_PATH = @"C:\Program Files (x86)\Steam\steamapps\common\Morrowind\Data Files\Morrowind.bsa";
+	const string output_directory = "output";
 	static int Main(string[] args){
-		string path = args[0];
+		string path = 0 < args.Length ? args[0] : DEFAULT_PATH;
 		byte[] rawData = File.ReadAllBytes(path); // .Skip(24)
 		uint magic = BitConverter.ToUInt32(rawData.Take(4).ToArray());
 		if (magic != 0x00000100){
@@ -30,8 +33,10 @@
 		// strings
 		int name_section_offset = offset;
 		string[] names = new string[file_count];
-		for (int i = 0; i < file_count; i++)
-			names[i] = System.Text.Encoding.ASCII.GetString(rawData.Skip(name_section_offset + (int)name_offsets[i]).Take((int)(name_offsets[i+1] - name_offsets[i])).ToArray());
+		for (int i = 0; i < file_count; i++){
+			int end = (int)(i == file_count - 1 ? hash_table_offset : name_offsets[i+1]);
+			names[i] = System.Text.Encoding.ASCII.GetString(rawData.Skip(name_section_offset + (int)name_offsets[i]).Take(end - (int)name_offsets[i]).ToArray());
+		}
 		// hashes
 		ulong[] hashes = new ulong[file_count];
 		for (int i = 0; i < file_count; i++)
@@ -41,9 +46,19 @@
 		for (int i = 0; i < file_count; i++)
 			data[i] = rawData.Skip(12 + (int)file_sizes_and_offsets[i, 1]).Take((int)file_sizes_and_offsets[i, 0]).ToArray();
 		// save
-		for (int i = 0; i < names.Length; i++)
-			File.WriteAllBytes(names[i], data[i]);
+		for (int i = 0; i < names.Length; i++){
+			string name = 255 < names[i].Length ? random.Next().ToString() : names[i];
+			Console.WriteLine($"Writing {i+1}/{names.Length} to {output_directory}: {name}");
+			WriteFile(output_directory + "\\" + name, data[i]);
+		}
 		// its oki
 		return 0;
+	}
+	static void WriteFile(string name, byte[] data){
+		name = name.Replace("\0", "");
+		string? directory = Path.GetDirectoryName(name);
+		if (directory is not null && !Directory.Exists(directory))
+			Directory.CreateDirectory(directory);
+		File.WriteAllBytes(name, data);
 	}
 }
