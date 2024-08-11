@@ -39,12 +39,14 @@
 		}
 		// hashes
 		ulong[] hashes = new ulong[file_count];
+		int data_offset = 0;
 		for (int i = 0; i < file_count; i++)
-			hashes[i] = BitConverter.ToUInt64(rawData.Skip(12 + (int)hash_table_offset + 8*i).Take(8).ToArray());
+			hashes[i] = BitConverter.ToUInt64(rawData.Skip(data_offset = 12 + (int)hash_table_offset + 8*i).Take(8).ToArray());
 		// data
+		data_offset += 8;
 		byte[][] data = new byte[file_count][];
 		for (int i = 0; i < file_count; i++)
-			data[i] = rawData.Skip(12 + (int)file_sizes_and_offsets[i, 1]).Take((int)file_sizes_and_offsets[i, 0]).ToArray();
+			data[i] = rawData.Skip(data_offset + (int)file_sizes_and_offsets[i, 1]).Take((int)file_sizes_and_offsets[i, 0]).ToArray();
 		// save
 		for (int i = 0; i < names.Length; i++){
 			string name = 255 < names[i].Length ? random.Next().ToString() : names[i];
